@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "704693091583",
+    "project_id": "locationbasedphotodiary-3798c",
+    "storage_bucket": "locationbasedphotodiary-3798c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:704693091583:android:41c14f02eac0c5d91120ca",
+        "android_client_info": {
+          "package_name": "com.example.location_basedphotodiary"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABrhi07FpFExeQCF7nYPANeIzLBZ3RHvk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
