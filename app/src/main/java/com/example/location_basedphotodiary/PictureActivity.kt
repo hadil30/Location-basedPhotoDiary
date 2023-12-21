@@ -26,8 +26,14 @@ class PictureActivity : AppCompatActivity() {
         binding = ActivityPictureBinding.inflate(layoutInflater)
         setContentView(binding.root)
         storage= FirebaseStorage.getInstance()
+        val namef=intent.getStringExtra("name")
+        binding.textView9.text=namef
         binding.btnPic.setOnClickListener {
             openCamera()
+        }
+        binding.btnAllpic.setOnClickListener {
+            intent = Intent(this, GalleryActivity::class.java)
+            startActivity(intent)
         }
     }
 
