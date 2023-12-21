@@ -35,13 +35,26 @@ class LoginActivity : AppCompatActivity() {
             startActivity(intent)
         }
     }
-   // @SuppressLint("NotConstructor")
+
+   fun extractUsername(email: String): String {
+       val atIndex = email.indexOf('@')
+       return if (atIndex != -1) {
+           email.substring(0, atIndex)
+       } else {
+
+           email
+       }
+   }
     fun Login() {
         mAuth.signInWithEmailAndPassword(email.text.toString(), password.text.toString())
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
                     val user : FirebaseUser? =mAuth.currentUser
                     Toast.makeText(this,"Authentication Success", Toast.LENGTH_SHORT).show()
+                    intent = Intent(this, PictureActivity::class.java)
+                    val name =extractUsername(email.text.toString())
+                    intent.putExtra("name",name)
+                    startActivity(intent)
                 } else {
                     Log.d("","signInWithEmailAndPassword:failure",task.getException());
                     Toast.makeText(this,"Authentication Failed", Toast.LENGTH_SHORT).show()
