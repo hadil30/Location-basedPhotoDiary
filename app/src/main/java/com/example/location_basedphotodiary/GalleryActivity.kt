@@ -4,25 +4,17 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.ProgressBar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
-import com.example.location_basedphotodiary.databinding.ActivityGalleryBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
 
 class GalleryActivity : AppCompatActivity() {
-    private lateinit var storage: FirebaseStorage
-    //private lateinit var binding: ActivityGalleryBinding
-    private val imagelist: ArrayList<String> = ArrayList()
+    private val imageInfoList: ArrayList<ImageAdapter.ImageInfo> = ArrayList()
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ImageAdapter
     private lateinit var progressBar: ProgressBar
@@ -32,7 +24,7 @@ class GalleryActivity : AppCompatActivity() {
         setContentView(R.layout.activity_gallery)
 
         recyclerView = findViewById(R.id.recyclerview)
-        adapter = ImageAdapter(imagelist, this)
+        adapter = ImageAdapter(imageInfoList, this)
         recyclerView.layoutManager = LinearLayoutManager(this)
         progressBar = findViewById(R.id.progress)
         progressBar.visibility = View.VISIBLE
@@ -46,14 +38,15 @@ class GalleryActivity : AppCompatActivity() {
                 .child("user_images")
                 .child(uid)
 
-            // Retrieve image URLs from the "user_images" node
+            // Retrieve image URLs and location from the "user_images" node
             userImagesRef.addValueEventListener(object : ValueEventListener {
-                 override fun onDataChange(snapshot: DataSnapshot) {
-                    imagelist.clear()
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    imageInfoList.clear()
                     for (imageSnapshot in snapshot.children) {
-                        val imageUrl = imageSnapshot.getValue(String::class.java)
-                        if (imageUrl != null) {
-                            imagelist.add(imageUrl)
+                        val imageUrl = imageSnapshot.child("imageUrl").getValue(String::class.java)
+                        val location = imageSnapshot.child("location").getValue(String::class.java)
+                        if (imageUrl != null && location != null) {
+                            imageInfoList.add(ImageAdapter.ImageInfo(imageUrl, location))
                             Log.e("Itemvalue", imageUrl)
                         }
                     }
@@ -69,7 +62,4 @@ class GalleryActivity : AppCompatActivity() {
             })
         }
     }
-
 }
-
-

@@ -13,8 +13,7 @@
         android:layout_height="wrap_content"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:listitem="@layout/item"
-        android:contentDescription="NULL"
-        />
+        android:contentDescription="NULL" />
 
     <ProgressBar
         android:id="@+id/progress"
@@ -22,5 +21,4 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:indeterminate="true" />
-
 </FrameLayout>

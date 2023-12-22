@@ -1,51 +1,98 @@
 package com.example.location_basedphotodiary
+
 import android.Manifest
-import android.app.Activity
+import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import androidx.appcompat.app.AppCompatActivity
+import android.location.Address
+import android.location.Geocoder
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.bumptech.glide.Glide
 import com.example.location_basedphotodiary.databinding.ActivityPictureBinding
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.storage.FirebaseStorage
+import pub.devrel.easypermissions.EasyPermissions
 import java.io.ByteArrayOutputStream
+import java.util.*
 
 class PictureActivity : AppCompatActivity() {
+
     private val REQUEST_IMAGE_CAPTURE = 1
+    private val REQUEST_LOCATION_PERMISSION = 2
+
     private lateinit var storage: FirebaseStorage
-    lateinit var binding:ActivityPictureBinding
-    lateinit var mAuth: FirebaseAuth;
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var binding: ActivityPictureBinding
+    private lateinit var mAuth: FirebaseAuth
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityPictureBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        mAuth= FirebaseAuth.getInstance()
+        mAuth = FirebaseAuth.getInstance()
 
-        storage= FirebaseStorage.getInstance()
-        val namef=intent.getStringExtra("name")
-        binding.textView9.text=namef
+        storage = FirebaseStorage.getInstance()
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        val namef = intent.getStringExtra("name")
+        binding.textView9.text = namef
+
         binding.btnPic.setOnClickListener {
-            openCamera()
+            requestLocationAndOpenCamera()
         }
+
         binding.btnAllpic.setOnClickListener {
             intent = Intent(this, GalleryActivity::class.java)
             startActivity(intent)
         }
+
         binding.btnlogout.setOnClickListener {
             mAuth.signOut()
             intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)
             finish()
         }
+    }
+
+    private fun requestLocationAndOpenCamera() {
+        if (checkLocationPermissions()) {
+            getLastKnownLocationAndOpenCamera()
+        } else {
+            requestLocationPermission()
+        }
+    }
+
+    private fun getLastKnownLocationAndOpenCamera() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        fusedLocationClient.lastLocation
+            .addOnSuccessListener { location ->
+                location?.let {
+                    val latitude = location.latitude
+                    val longitude = location.longitude
+                    val address = getAddressFromLocation(latitude, longitude)
+                    openCamera()
+                }
+            }
     }
 
     private fun openCamera() {
@@ -56,98 +103,158 @@ class PictureActivity : AppCompatActivity() {
                     startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
                 } catch (e: ActivityNotFoundException) {
                     // display error state to the user
-                }}
-        }
-        else{
+                }
+            }
+        } else {
             requestCameraPermission()
         }
     }
+
     private fun isCameraPermissionEnabled(): Boolean {
-        val permission =  Manifest.permission.CAMERA
+        val permission = Manifest.permission.CAMERA
         val result = ContextCompat.checkSelfPermission(this, permission)
         return result == PackageManager.PERMISSION_GRANTED
     }
-    private val permissionId = 123
-    private fun requestCameraPermission() {
 
+    private fun requestCameraPermission() {
         ActivityCompat.requestPermissions(
             this,
             arrayOf(Manifest.permission.CAMERA),
-            permissionId
+            REQUEST_LOCATION_PERMISSION
         )
     }
+
     private fun checkPermissionsCamera(): Boolean {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            return true
-        }
-        return false
+        return ActivityCompat.checkSelfPermission(
+            this,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
     }
-
-
-    //Now we write onActivityResult() Function to show the captured Picture and show it on Image View
-
-
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == Activity.RESULT_OK) {
-            val imageBitmap = data?.extras?.get("data") as Bitmap
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            requestLocationAndSaveImage(data)
+        }
+    }
 
-            val fileName = "image_${System.currentTimeMillis()}.jpg"
-            val storageRef = storage.reference.child("images").child(fileName)
+    private fun requestLocationAndSaveImage(data: Intent?) {
+        if (checkLocationPermissions()) {
+            getLastKnownLocationAndSaveImage(data)
+        } else {
+            requestLocationPermission()
+        }
+    }
 
-            // Convert the Bitmap to a byte array
-            val baos = ByteArrayOutputStream()
-            imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
-            val imageData = baos.toByteArray()
+    private fun getLastKnownLocationAndSaveImage(data: Intent?) {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        fusedLocationClient.lastLocation
+            .addOnSuccessListener { location ->
+                location?.let {
+                    val latitude = location.latitude
+                    val longitude = location.longitude
+                    val address = getAddressFromLocation(latitude, longitude)
 
-            // Upload the image to Firebase Storage
-            val uploadTask = storageRef.putBytes(imageData)
-            uploadTask.addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    storageRef.downloadUrl.addOnSuccessListener { uri ->
-                        val downloadUrl = uri.toString()
-                        Log.d("PictureActivity", "Download URL: $downloadUrl")
+                    // Extract the image data from the intent
+                    val imageBitmap = data?.extras?.get("data") as Bitmap
 
-                        // Save the image URL in Firebase Realtime Database
-                        saveImageUrlToDatabase(downloadUrl)
-
-                        // Use the downloadUrl with Glide to load and display the image
-                        Glide.with(this)
-                            .load(downloadUrl)
-                            .error(R.drawable.img) // Set an error image if loading fails
-                            .into(binding.image)
-
-                        Toast.makeText(this, "Image uploaded successfully", Toast.LENGTH_SHORT).show()
-                        // You can save the downloadUrl or use it to display the image later
-                    }
-                } else {
-                    // Image upload failed
-                    val exception = task.exception
-                    // Handle the exception
+                    // Proceed to save the image with the obtained location
+                    saveImageAndLocation(imageBitmap, address)
                 }
             }
-        }}
+    }
 
+    private fun getAddressFromLocation(latitude: Double, longitude: Double): String {
+        val geocoder = Geocoder(this, Locale.getDefault())
+        return try {
+            val addresses: List<Address>? = geocoder.getFromLocation(latitude, longitude, 1)
+            if (addresses != null && addresses.isNotEmpty()) {
+                addresses[0].getAddressLine(0) ?: ""
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ""
+        }
+    }
 
-    private fun saveImageUrlToDatabase(imageUrl: String) {
-        // Get the current user's UID
+    private fun saveImageAndLocation(imageBitmap: Bitmap, address: String) {
+        val fileName = "image_${System.currentTimeMillis()}.jpg"
+        val storageRef = storage.reference.child("images").child(fileName)
+
+        val baos = ByteArrayOutputStream()
+        imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
+        val imageData = baos.toByteArray()
+
+        val uploadTask = storageRef.putBytes(imageData)
+        uploadTask.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                storageRef.downloadUrl.addOnSuccessListener { uri ->
+                    val downloadUrl = uri.toString()
+                    Log.d("PictureActivity", "Download URL: $downloadUrl")
+
+                    // Save the image URL and location in Firebase Realtime Database
+                    saveImageUrlAndLocationToDatabase(downloadUrl, address)
+
+                    // Use the downloadUrl with Glide to load and display the image
+                    Glide.with(this)
+                        .load(downloadUrl)
+                        .error(R.drawable.img)
+                        .into(binding.image)
+
+                    Toast.makeText(this, "Image uploaded successfully", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                // Image upload failed
+                val exception = task.exception
+                // Handle the exception
+            }
+        }
+    }
+
+    private fun checkLocationPermissions(): Boolean {
+        val fineLocationPermission =
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+        val coarseLocationPermission =
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+
+        return fineLocationPermission == PackageManager.PERMISSION_GRANTED &&
+                coarseLocationPermission == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestLocationPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ),
+            REQUEST_LOCATION_PERMISSION
+        )
+    }
+
+    private fun saveImageUrlAndLocationToDatabase(imageUrl: String, address: String) {
         val currentUser = FirebaseAuth.getInstance().currentUser
         val uid = currentUser?.uid
 
         if (uid != null) {
-            // Reference to the 'user_images' node in the Firebase Realtime Database
             val userImagesReference = FirebaseDatabase.getInstance().reference.child("user_images")
 
-            // Save the image URL under the user's UID
-            userImagesReference.child(uid).push().setValue(imageUrl)
+            val imageInfoMap = mapOf(
+                "imageUrl" to imageUrl,
+                "location" to address
+            )
+            userImagesReference.child(uid).push().setValue(imageInfoMap)
         }
     }
-
-
-
-    }
+}
