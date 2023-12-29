@@ -31,10 +31,10 @@ class LoginActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         val currentUser: FirebaseUser? = mAuth.currentUser
-        if (currentUser != null) {
+        /*if (currentUser != null) {
             intent = Intent(this, PictureActivity::class.java)
             startActivity(intent)
-        }
+        }*/
     }
 
    fun extractUsername(email: String): String {
@@ -50,17 +50,24 @@ class LoginActivity : AppCompatActivity() {
         mAuth.signInWithEmailAndPassword(email.text.toString(), password.text.toString())
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    val user : FirebaseUser? =mAuth.currentUser
-                    Toast.makeText(this,"Authentication Success", Toast.LENGTH_SHORT).show()
-                    intent = Intent(this, PictureActivity::class.java)
-                    val name =extractUsername(email.text.toString())
-                    intent.putExtra("name",name)
-                    startActivity(intent)
-                } else {
-                    Log.d("","signInWithEmailAndPassword:failure",task.getException());
-                    Toast.makeText(this,"Authentication Failed", Toast.LENGTH_SHORT).show()
+                    val user: FirebaseUser? = mAuth.currentUser
+                    Toast.makeText(this, "Authentication Success", Toast.LENGTH_SHORT).show()
 
+                    // Check if the user is not null before navigating to PictureActivity
+                    if (user != null) {
+                        intent = Intent(this, PictureActivity::class.java)
+                        val name = extractUsername(email.text.toString())
+                        intent.putExtra("name", name)
+                        startActivity(intent)
+                    } else {
+                        // Handle the case where the user is null
+                        Toast.makeText(this, "User is null", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Log.d("", "signInWithEmailAndPassword:failure", task.exception)
+                    Toast.makeText(this, "Authentication Failed", Toast.LENGTH_SHORT).show()
                 }
             }
     }
+
 }

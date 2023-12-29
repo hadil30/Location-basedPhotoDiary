@@ -17,6 +17,16 @@
             android:layout_height="match_parent"
             android:id="@+id/item"
             android:scaleType="centerCrop"/>
+        <ImageView
+            android:id="@+id/deleteIcon"
+            android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"
+        android:src="@drawable/ic_delete" />
+
     </androidx.cardview.widget.CardView>
 
     <TextView
